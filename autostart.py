@@ -1,45 +1,36 @@
 #!/usr/bin/env python
 
-#Python packages
-import requests         #Import requests for HTTP(S) protocols
-import time             #Import time for timestamps
-import string             #Import string for string libraries
-import random             #Import random to generate random numbers
-import sys                 #Import sys for system calls
+# Python packages
+import sys              #Import sys for system calls
 import json             #Import json for reading and writing JSON data structures
-import hmac             #Import hmac to encode signature
-import urllib            #Import urllib to encode URL strings
-from hashlib import sha1
+import requests         #Import requests for HTTP(S) protocols
 
-#Custom packages
+
+# Custom packages
 import credentials         #Import credentials file to be used for calls to Yahoo services
 
 #Global Variables
 
 debug = False
-offline = True
 
-
-requestTokenUrl = "https://api.login.yahoo.com/oauth/v2/get_request_token"
-requestAuthUrl = "https://api.login.yahoo.com/oauth2/request_auth"
-requestAccessTokenUrl = "https://api.login.yahoo.com/oauth2/get_token"
-baseYahooApiUrl = "https://fantasysports.yahooapis.com/fantasy/v2/"
+REQUEST_TOKEN_URL = "https://api.login.yahoo.com/oauth/v2/get_request_token"
+REQUEST_AUTH_URL = "https://api.login.yahoo.com/oauth2/request_auth"
+REQUEST_TOKEN_URL = "https://api.login.yahoo.com/oauth2/get_token"
+BASE_YAHOO_API_URL = "https://fantasysports.yahooapis.com/fantasy/v2/"
 
 
 def startPlayers():
     """
-        This is the main function of the application. It will start all players that are playing on a given day.
+        This is the main function of the application. 
+        It will start all players that are playing on a given day.
     """
-
-    #TODO: Check for existence of token file. If doesn't exist then execute full authorization process. Otherwise
-    #       check to see if token has exprired. If expired then refresh token otherwise proceed
 
     hasToken = False
 
     #if file exists mark hasToken as True
 
     try:
-        tokenFile = open('tokenData.conf', 'r')
+        open('tokenData.conf', 'r')
         hasToken = True
     except IOError, e:
 
@@ -65,7 +56,7 @@ def getRoster(oauth):
         Get the roster from Yahoo and parses the response
     """
 
-    rosterUrl = baseYahooApiUrl + "team/" + credentials.gameKey + ".l." + credentials.leagueId + ".t." + credentials.teamId + "/roster"
+    rosterUrl = BASE_YAHOO_API_URL + "team/" + credentials.gameKey + ".l." + credentials.leagueId + ".t." + credentials.teamId + "/roster"
     header = "Bearer " + oauth['token']
     response = requests.get(rosterUrl, headers={'Authorization' : header})
     
@@ -91,7 +82,7 @@ def getFullAuthorization():
     """
     # Step 1: Get authorization from User to access their data
 
-    authUrl = "%s?client_id=%s&redirect_uri=oob&response_type=code" % (requestAuthUrl, credentials.consumerKey)
+    authUrl = "%s?client_id=%s&redirect_uri=oob&response_type=code" % (REQUEST_AUTH_URL, credentials.consumerKey)
 
     if debug == True:
         print (authUrl)
@@ -169,7 +160,7 @@ def getAccessToken(verifier):
 
     print ("Getting access token...")
 
-    response = requests.post(requestAccessTokenUrl, data = {'client_id' : credentials.consumerKey, 'client_secret' : credentials.consumerSecret, 'redirect_uri' : 'oob', 'code' : verifier, 'grant_type' : 'authorization_code'})
+    response = requests.post(REQUEST_TOKEN_URL, data = {'client_id' : credentials.consumerKey, 'client_secret' : credentials.consumerSecret, 'redirect_uri' : 'oob', 'code' : verifier, 'grant_type' : 'authorization_code'})
 
     if response.status_code == 200:
         print ("Success!")
@@ -190,7 +181,7 @@ def refreshAccessToken(refreshToken):
 
     print ("Refreshing access token...")
 
-    response = requests.post(requestAccessTokenUrl, data = {'client_id' : credentials.consumerKey, 'client_secret' : credentials.consumerSecret, 'redirect_uri' : 'oob', 'refresh_token' : refreshToken, 'grant_type' : 'refresh_token'})
+    response = requests.post(REQUEST_TOKEN_URL, data = {'client_id' : credentials.consumerKey, 'client_secret' : credentials.consumerSecret, 'redirect_uri' : 'oob', 'refresh_token' : refreshToken, 'grant_type' : 'refresh_token'})
 
     if response.status_code == 200:
         print ("Success!")
