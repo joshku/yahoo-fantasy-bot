@@ -133,13 +133,11 @@ def parseResponse (response):
     parsedResponse = json.loads(response)
     accessToken = parsedResponse['access_token']
     refreshToken = parsedResponse['refresh_token']
-    guid = parsedResponse['xoauth_yahoo_guid']
 
     oauth = {}
 
     oauth['token'] = accessToken
     oauth['refreshToken'] = refreshToken
-    oauth['guid'] = guid
 
     try:
         tokenFile = open('tokenData.conf', 'w')
