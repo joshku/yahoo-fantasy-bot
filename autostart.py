@@ -6,6 +6,7 @@ import json             #Import json for reading and writing JSON data structure
 import requests         #Import requests for HTTP(S) protocols
 import xmltodict        #Import xmltodict to parse XML responses to JSON
 import datetime         #Import datetime to get the current date
+from collections import OrderedDict
 
 
 # Custom packages
@@ -108,7 +109,7 @@ def getRoster():
         Get the roster from Yahoo and parses the response
     """
 
-    rosterUrl = BASE_YAHOO_API_URL + "team/" + credentials.gameKey + ".l." + credentials.leagueId + ".t." + credentials.teamId + "/roster"
+    rosterUrl = BASE_YAHOO_API_URL + "team/" + credentials.gameKey + ".l." + credentials.leagueId + ".t." + credentials.teamId + "/roster" + ";date=2017-10-13"
     return queryYahooApi(rosterUrl, "roster")
 
 def getPlayerData(playerKey):
@@ -278,45 +279,70 @@ def setLineup(roster):
     """
 
     switchedPlayers = True
-    while (switchedPlayers):
-        switchedPlayers = False
-        for benchPlayer in roster:
-            if benchPlayer['current_position'] == "BN":
-                print ("Looking at bench player %s" % benchPlayer['name'])
-                positions = set(benchPlayer['available_positions'])
-                print positions
-                for player in roster:
-                    if player['current_position'] in positions:
-                        print ("Looking at %s" % player['name'])
-                        if player['next_game'] > benchPlayer['next_game']:
-                            print ("BN player has an earlier game")
-                            print ("Swapping %s for %s" % (player['name'], benchPlayer['name']))
-                            # swapPlayers(player, benchPlayer)
-                            position = benchPlayer['current_position']
-                            benchPlayer['current_position'] = player['current_position']
-                            player['current_position'] = position
-                            switchedPlayers = True
-                            break
-                        elif ((player['next_game'] == benchPlayer['next_game']) and (player['points'] > benchPlayer['points'])):
-                            print ("BN player has more points")
-                            print ("Swapping %s for %s" % (player['name'], benchPlayer['name']))
-                            # swapPlayers(player, benchPlayer)
-                            position = benchPlayer['current_position']
-                            benchPlayer['current_position'] = player['current_position']
-                            player['current_position'] = position
-                            switchedPlayers = True
-                            break
-                    
+    today = str(datetime.date.today())
+    # while (switchedPlayers):
+        # switchedPlayers = False
+    for benchPlayer in roster:
+        if benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today:
+            print ("Looking at bench player %s" % benchPlayer['name'])
+            positions = set(benchPlayer['available_positions'])
+            # print positions
+            player = findNonPlayingPlayer(positions, roster)
+
+            if player is not None:
+                # print ("Benching %s for %s" % (player['name'], benchPlayer['name']))
+                swapPlayers(player, benchPlayer)
+                # switchedPlayers = True
+            else:
+                player = findNextEligiblePlayer(positions, roster)
+                if benchPlayer['points'] > player['points']:
+                    # print ("Benching %s for %s" % (player['name'], benchPlayer['name']))
+                    swapPlayers(player, benchPlayer)
+                    # switchedPlayers = True         
     
     # for line in roster:
-        # print line
+    #     print line
 
-    # print "\n\n\
+
+def findNonPlayingPlayer(positions, roster):
+    """
+        Looks for the first player not playing on the current date and returns it
+    """
+
+    # print ("Today's date: %s" % str(datetime.date.today()))
+    today = str(datetime.date.today())
+    for player in roster:
+        if player['current_position'] in positions and player['next_game'] > today:
+            print ("Found player %s who plays on %s" % (player['name'], player['next_game']))
+            return player
     
+    print ("All players playing today")
+    return None
+
+def findNextEligiblePlayer(positions, roster):
+    """
+        Looks for the next eligible player with the lowest points this season and returns it
+    """
+
+    today = str(datetime.date.today())
+
+    selectedPlayer = None
+    for player in roster:
+        if selectedPlayer is None:
+            selectedPlayer = player
+            pass
+
+        if player['current_position'] in positions and player['points'] < selectedPlayer['points']:
+            selectedPlayer = player
+    
+    print ("Found %s to be the next eligible player" % selectedPlayer['name'])
+    return selectedPlayer
+
 def swapPlayers(currentPlayer, benchPlayer):
     """
         Sends PUT request to Yahoo to swap two players
     """
+
     print ("Starting %s over %s" % (benchPlayer['name'], currentPlayer['name']))
     dictPayload = {}
     dictPayload['fantasy_content'] = {}
@@ -326,38 +352,44 @@ def swapPlayers(currentPlayer, benchPlayer):
     dictPayload['fantasy_content']['roster']['players'] = {}
     dictPayload['fantasy_content']['roster']['players']['player'] = []
     player1 = {}
-    player1['position'] = benchPlayer['current_position']
-    player1['player_key'] = currentPlayer['key']
-    dictPayload['fantasy_content']['roster']['players']['player'].append(player1)
+    player1['player_key'] = benchPlayer['key']
+    player1['position'] = currentPlayer['current_position']
+    orderedP1 = OrderedDict(sorted(player1.items()))
+    dictPayload['fantasy_content']['roster']['players']['player'].append(orderedP1)
 
     player2 = {}
-    player2['position'] = currentPlayer['current_position']
-    player2['player_key'] = benchPlayer['key']
-    dictPayload['fantasy_content']['roster']['players']['player'].append(player2)
+    player2['player_key'] = currentPlayer['key']
+    player2['position'] = benchPlayer['current_position']
+    orderedP2 = OrderedDict(sorted(player2.items()))
+    dictPayload['fantasy_content']['roster']['players']['player'].append(orderedP2)
+    # try:
+    #     xmlFile = open('test.xml', 'r')
+    #     payload = xmlFile.read()
+    #     xmlFile.close()
+    # except Exception, e:
+    #     raise e
+
 
     payload = xmltodict.unparse(dictPayload, pretty=True)
-    print payload
+    # payload = xmltodict.unparse(dictPayload)
+    # print payload
 
     rosterUrl = BASE_YAHOO_API_URL + "team/" + credentials.gameKey + ".l." + credentials.leagueId + ".t." + credentials.teamId + "/roster"
     oauth = readOAuthToken()
     header = "Bearer " + oauth['token']
     response = requests.put(rosterUrl, headers={'Authorization' : header, 'Content-Type': 'application/xml'}, data=payload)
-    print response.status_code
-    print response.content
-    # if response.status_code == 200:
-    #     # print ("Successfully got %s data" % dataType)
-    #     # print (response.content)
-    #     payload = xmltodict.parse(response.content)
-    #     # print ("Successfully parsed %s data" % dataType)
-    #     return payload
-    # elif response.status_code == 401 and "token_expired" in response.content:
-    #     print ("Token Expired....renewing")
-    #     oauth = refreshAccessToken(oauth['refreshToken'])
-    #     return queryYahooApi(url, dataType)
-    # else:
-    #     print ("ERROR! Could not get %s information" % dataType)
-    #     print ("-------DEBUG------\n%s\%s" % (response.status_code, response.content))
-    #     sys.exit(1)
+
+    if response.status_code == 200:
+        print ("Successfully started %s and benched %s" % (benchPlayer['name'], currentPlayer['name']))
+        return True
+    elif response.status_code == 401 and "token_expired" in response.content:
+        print ("Token Expired....renewing")
+        oauth = refreshAccessToken(oauth['refreshToken'])
+        return queryYahooApi(url, dataType)
+    else:
+        print ("ERROR! Could not start players")
+        print ("-------DEBUG------\n%s\%s" % (response.status_code, response.content))
+        sys.exit(1)
 
 
 main()
