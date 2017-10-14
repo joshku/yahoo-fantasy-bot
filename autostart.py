@@ -1,21 +1,19 @@
 #!/usr/bin/env python
 
 # Python packages
-import sys              #Import sys for system calls
-import json             #Import json for reading and writing JSON data structures
-import requests         #Import requests for HTTP(S) protocols
-import xmltodict        #Import xmltodict to parse XML responses to JSON
-import datetime         #Import datetime to get the current date
-from collections import OrderedDict
+import sys                              #Import sys for system calls
+import json                             #Import json for reading and writing JSON data structures
+import requests                         #Import requests for HTTP(S) protocols
+import xmltodict                        #Import xmltodict to parse XML responses to JSON
+import datetime                         #Import datetime to get the current date
+import logging                          #Import logging to send output to a log file
+from collections import OrderedDict     #Import OrderedDict to set the key order in a dictionary
 
 
 # Custom packages
 import credentials         #Import credentials file to be used for calls to Yahoo services
 
 #Global Variables
-
-debug = False
-
 REQUEST_TOKEN_URL = "https://api.login.yahoo.com/oauth/v2/get_request_token"
 REQUEST_AUTH_URL = "https://api.login.yahoo.com/oauth2/request_auth"
 REQUEST_TOKEN_URL = "https://api.login.yahoo.com/oauth2/get_token"
@@ -62,9 +60,10 @@ def main():
         It will start all players that are playing on a given day.
     """
 
+    logging.info("Starting Auto-Start Bot...")
     hasToken = False
 
-    #if file exists mark hasToken as True
+    # Check to see if the token data file is present
 
     try:
         open('tokenData.conf', 'r')
@@ -74,10 +73,10 @@ def main():
         if "No such file or directory" in e.strerror:
             hasToken = False
         else:
-            print ("IO ERROR: [%d] %s" %(e.errno, e.strerror))
+            logging.error("IO ERROR: [%d] %s" %(e.errno, e.strerror))
             sys.exit(1)
     except Exception, e:
-        print ("ERROR: [%d] %s" %(e.errno, e.strerror))
+        logging.error("ERROR: [%d] %s" %(e.errno, e.strerror))
         sys.exit(1)
 
     if hasToken == False:
@@ -87,12 +86,10 @@ def main():
     roster = getRoster()
     team = []
     for player in roster['fantasy_content']['team']['roster']['players']['player']:
-        # print ("Name: %s\t\tKey: %s" % (player['name']['full'], player['player_key']))
         playerData = getPlayerData(player['player_key'])
         playerData['current_position'] = player['selected_position']['position']
         playerData['key'] = player['player_key']
         team.append(playerData)
-        # print playerData
     
     setLineup(team)
 
@@ -142,18 +139,21 @@ def queryYahooApi(url, dataType):
     response = requests.get(url, headers={'Authorization' : header})
     
     if response.status_code == 200:
-        # print ("Successfully got %s data" % dataType)
-        # print (response.content)
+        logging.debug("Successfully got %s data" % dataType)
+        logging.debug(response.content)
         payload = xmltodict.parse(response.content)
-        # print ("Successfully parsed %s data" % dataType)
+        logging.debug("Successfully parsed %s data" % dataType)
         return payload
     elif response.status_code == 401 and "token_expired" in response.content:
-        print ("Token Expired....renewing")
+        logging.info("Token Expired....renewing")
         oauth = refreshAccessToken(oauth['refreshToken'])
         return queryYahooApi(url, dataType)
     else:
-        print ("ERROR! Could not get %s information" % dataType)
-        print ("-------DEBUG------\n%s\%s" % (response.status_code, response.content))
+        logging.error("Could not get %s information" % dataType)
+        logging.error("---------DEBUG--------")
+        logging.error("HTTP Code: %s" % response.status_code)
+        logging.error("HTTP Response: \n%s" % response.content)
+        logging.error("-------END DEBUG------")
         sys.exit(1)
 
 def getFullAuthorization():
@@ -162,15 +162,11 @@ def getFullAuthorization():
 
         Writes all relevant data to tokenData.conf
     """
+
     # Step 1: Get authorization from User to access their data
-
     authUrl = "%s?client_id=%s&redirect_uri=oob&response_type=code" % (REQUEST_AUTH_URL, credentials.consumerKey)
-
-    if debug == True:
-        print (authUrl)
-
+    logging.debug(authUrl)
     print ("You need to authorize this application to access your data.\nPlease go to %s" % (authUrl))
-
     authorized = 'n'
 
     while authorized.lower() != 'y':
@@ -181,11 +177,8 @@ def getFullAuthorization():
     authCode = raw_input("What is the code? ")
 
     # Step 2: Get Access Token to send requests to Yahoo APIs
-
     response = getAccessToken(authCode)
-
     oauth = parseResponse(response)
-    
     return oauth
 
 def readOAuthToken():
@@ -193,7 +186,7 @@ def readOAuthToken():
         Reads the token data from file and returns a dictionary object
     """
 
-    # print ("Reading token details from file...")
+    logging.debug("Reading token details from file...")
 
     try:
         tokenFile = open('tokenData.conf', 'r')
@@ -202,7 +195,7 @@ def readOAuthToken():
     except Exception, e:
         raise e
 
-    # print ("Reading complete!")
+    logging.debug("Reading complete!")
     return oauth
 
 def parseResponse (response):
@@ -238,18 +231,20 @@ def getAccessToken(verifier):
         Returns access token payload
     """
 
-    print ("Getting access token...")
+    logging.info("Getting access token...")
 
     response = requests.post(REQUEST_TOKEN_URL, data = {'client_id' : credentials.consumerKey, 'client_secret' : credentials.consumerSecret, 'redirect_uri' : 'oob', 'code' : verifier, 'grant_type' : 'authorization_code'})
 
     if response.status_code == 200:
-        print ("Success!")
-        if debug == True:
-            print response.content
+        logging.info("Success!")
+        logging.debug(response.content)
         return response.content
     else:
-        print ("Error! Access Token Request returned a non 200 code")
-        print ("-------DEBUG-------\n%s%s" % (response.status_code, response.content))
+        logging.error("Access Token Request returned a non 200 code")
+        logging.error("---------DEBUG--------")
+        logging.error("HTTP Code: %s" % response.status_code)
+        logging.error("HTTP Response: \n%s" % response.content)
+        logging.error("-------END DEBUG------")
         sys.exit(1)
 
 def refreshAccessToken(refreshToken):
@@ -259,17 +254,21 @@ def refreshAccessToken(refreshToken):
         Returns access token payload
     """
 
-    print ("Refreshing access token...")
+    logging.info("Refreshing access token...")
 
     response = requests.post(REQUEST_TOKEN_URL, data = {'client_id' : credentials.consumerKey, 'client_secret' : credentials.consumerSecret, 'redirect_uri' : 'oob', 'refresh_token' : refreshToken, 'grant_type' : 'refresh_token'})
 
     if response.status_code == 200:
-        print ("Success!")
+        logging.info("Success!")
+        logging.debug(response.content)
         oauth = parseResponse(response.content)
         return oauth
     else:
-        print ("Error! Access Token Request returned a non 200 code")
-        print ("-------DEBUG-------\n%s%s" % (response.status_code, response.content))
+        logging.error("Access Token Request returned a non 200 code")
+        logging.error("---------DEBUG--------")
+        logging.error("HTTP Code: %s" % response.status_code)
+        logging.error("HTTP Response: \n%s" % response.content)
+        logging.error("-------END DEBUG------")
         sys.exit(1)
 
 def setLineup(roster):
@@ -280,28 +279,24 @@ def setLineup(roster):
 
     switchedPlayers = True
     today = str(datetime.date.today())
-    # while (switchedPlayers):
-        # switchedPlayers = False
     for benchPlayer in roster:
         if benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today:
-            print ("Looking at bench player %s" % benchPlayer['name'])
+            logging.info("Looking at bench player %s" % benchPlayer['name'])
             positions = set(benchPlayer['available_positions'])
-            # print positions
+            logging.debug(positions) 
             player = findNonPlayingPlayer(positions, roster)
 
             if player is not None:
-                # print ("Benching %s for %s" % (player['name'], benchPlayer['name']))
+                logging.debug("Benching %s for %s" % (player['name'], benchPlayer['name']))
                 swapPlayers(player, benchPlayer)
-                # switchedPlayers = True
             else:
                 player = findNextEligiblePlayer(positions, roster)
                 if benchPlayer['points'] > player['points']:
-                    # print ("Benching %s for %s" % (player['name'], benchPlayer['name']))
+                    logging.debug("Benching %s for %s" % (player['name'], benchPlayer['name']))
                     swapPlayers(player, benchPlayer)
-                    # switchedPlayers = True         
-    
-    # for line in roster:
-    #     print line
+
+    for line in roster:
+        logging.debug(line)
 
 
 def findNonPlayingPlayer(positions, roster):
@@ -309,14 +304,14 @@ def findNonPlayingPlayer(positions, roster):
         Looks for the first player not playing on the current date and returns it
     """
 
-    # print ("Today's date: %s" % str(datetime.date.today()))
+    logging.debug("Today's date: %s" % str(datetime.date.today()))
     today = str(datetime.date.today())
     for player in roster:
         if player['current_position'] in positions and player['next_game'] > today:
-            print ("Found player %s who plays on %s" % (player['name'], player['next_game']))
+            logging.debug("Found player %s who plays on %s" % (player['name'], player['next_game']))
             return player
     
-    print ("All players playing today")
+    logging.info("All players playing today")
     return None
 
 def findNextEligiblePlayer(positions, roster):
@@ -335,7 +330,7 @@ def findNextEligiblePlayer(positions, roster):
         if player['current_position'] in positions and player['points'] < selectedPlayer['points']:
             selectedPlayer = player
     
-    print ("Found %s to be the next eligible player" % selectedPlayer['name'])
+    logging.debug("Found %s to be the next eligible player" % selectedPlayer['name'])
     return selectedPlayer
 
 def swapPlayers(currentPlayer, benchPlayer):
@@ -343,7 +338,7 @@ def swapPlayers(currentPlayer, benchPlayer):
         Sends PUT request to Yahoo to swap two players
     """
 
-    print ("Starting %s over %s" % (benchPlayer['name'], currentPlayer['name']))
+    logging.info("Starting %s over %s" % (benchPlayer['name'], currentPlayer['name']))
     dictPayload = {}
     dictPayload['fantasy_content'] = {}
     dictPayload['fantasy_content']['roster'] = {}
@@ -354,6 +349,7 @@ def swapPlayers(currentPlayer, benchPlayer):
     player1 = {}
     player1['player_key'] = benchPlayer['key']
     player1['position'] = currentPlayer['current_position']
+    # Using an ordered dictionary because a regular dictionary does not respect order
     orderedP1 = OrderedDict(sorted(player1.items()))
     dictPayload['fantasy_content']['roster']['players']['player'].append(orderedP1)
 
@@ -362,17 +358,8 @@ def swapPlayers(currentPlayer, benchPlayer):
     player2['position'] = benchPlayer['current_position']
     orderedP2 = OrderedDict(sorted(player2.items()))
     dictPayload['fantasy_content']['roster']['players']['player'].append(orderedP2)
-    # try:
-    #     xmlFile = open('test.xml', 'r')
-    #     payload = xmlFile.read()
-    #     xmlFile.close()
-    # except Exception, e:
-    #     raise e
-
-
     payload = xmltodict.unparse(dictPayload, pretty=True)
-    # payload = xmltodict.unparse(dictPayload)
-    # print payload
+    logging.debug(payload)
 
     rosterUrl = BASE_YAHOO_API_URL + "team/" + credentials.gameKey + ".l." + credentials.leagueId + ".t." + credentials.teamId + "/roster"
     oauth = readOAuthToken()
@@ -380,16 +367,22 @@ def swapPlayers(currentPlayer, benchPlayer):
     response = requests.put(rosterUrl, headers={'Authorization' : header, 'Content-Type': 'application/xml'}, data=payload)
 
     if response.status_code == 200:
-        print ("Successfully started %s and benched %s" % (benchPlayer['name'], currentPlayer['name']))
+        logging.info("Successfully started %s and benched %s" % (benchPlayer['name'], currentPlayer['name']))
         return True
     elif response.status_code == 401 and "token_expired" in response.content:
-        print ("Token Expired....renewing")
+        logging.info("Token Expired....renewing")
         oauth = refreshAccessToken(oauth['refreshToken'])
         return queryYahooApi(url, dataType)
     else:
-        print ("ERROR! Could not start players")
-        print ("-------DEBUG------\n%s\%s" % (response.status_code, response.content))
+        logging.error("Could not start players")
+        logging.error("---------DEBUG--------")
+        logging.error("HTTP Code: %s" % response.status_code)
+        logging.error("HTTP Response: \n%s" % response.content)
+        logging.error("-------END DEBUG------")
         sys.exit(1)
 
+
+logging.basicConfig(filename='/var/log/yahoo-sports-bot/autostart.log', level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 main()
