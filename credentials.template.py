@@ -1,0 +1,5 @@
+consumerKey = "CONSUMER_KEY"
+consumerSecret = "CONSUMER_SECRET"
+gameKey = "KEY_ID"
+leagueId = "LEAGUE_ID"
+teamId = "TEAM_ID"
