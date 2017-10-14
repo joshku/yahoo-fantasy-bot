@@ -2,6 +2,7 @@
 
 # Python packages
 import sys                              #Import sys for system calls
+import os                               #Import os to get directory information
 import json                             #Import json for reading and writing JSON data structures
 import requests                         #Import requests for HTTP(S) protocols
 import xmltodict                        #Import xmltodict to parse XML responses to JSON
@@ -19,6 +20,9 @@ REQUEST_AUTH_URL = "https://api.login.yahoo.com/oauth2/request_auth"
 REQUEST_TOKEN_URL = "https://api.login.yahoo.com/oauth2/get_token"
 BASE_YAHOO_API_URL = "https://fantasysports.yahooapis.com/fantasy/v2/"
 NEXT_GAME_URL = "https://statsapi.web.nhl.com/api/v1/teams/%s?expand=team.schedule.next"
+DIRECTORY_PATH = os.path.dirname(os.path.realpath(__file__))
+TOKEN_PATH = DIRECTORY_PATH + '/tokenData.conf'
+
 
 NHL_TEAM_ID =  {
                     'New Jersey Devils' : '1',
@@ -66,7 +70,8 @@ def main():
     # Check to see if the token data file is present
 
     try:
-        open('tokenData.conf', 'r')
+        logging.debug("Token Path: %s" % TOKEN_PATH)
+        open(TOKEN_PATH, 'r')
         hasToken = True
     except IOError, e:
 
@@ -80,6 +85,7 @@ def main():
         sys.exit(1)
 
     if hasToken == False:
+        logging.info("Token file not present. Beginning authorization process...")
         oauth = getFullAuthorization()
 
     leagueSettings = getLeagueSettings()
@@ -189,7 +195,7 @@ def readOAuthToken():
     logging.debug("Reading token details from file...")
 
     try:
-        tokenFile = open('tokenData.conf', 'r')
+        tokenFile = open(TOKEN_PATH, 'r')
         oauth = json.load(tokenFile)
         tokenFile.close()
     except Exception, e:
@@ -215,7 +221,7 @@ def parseResponse (response):
     oauth['refreshToken'] = refreshToken
 
     try:
-        tokenFile = open('tokenData.conf', 'w')
+        tokenFile = open(TOKEN_PATH, 'w')
         json.dump(oauth, tokenFile)
         tokenFile.close()
 
@@ -278,6 +284,7 @@ def setLineup(roster):
     """
 
     switchedPlayers = True
+    swapStatus = False
     today = str(datetime.date.today())
     for benchPlayer in roster:
         if benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today:
@@ -288,12 +295,21 @@ def setLineup(roster):
 
             if player is not None:
                 logging.debug("Benching %s for %s" % (player['name'], benchPlayer['name']))
-                swapPlayers(player, benchPlayer)
+                swapStatus = swapPlayers(player, benchPlayer)
+
             else:
                 player = findNextEligiblePlayer(positions, roster)
-                if benchPlayer['points'] > player['points']:
+                # logging.info("Bench Points: %s Player Points: %s" % (benchPlayer['points'], player['points']))
+                if float(benchPlayer['points']) > float(player['points']):
                     logging.debug("Benching %s for %s" % (player['name'], benchPlayer['name']))
-                    swapPlayers(player, benchPlayer)
+                    swapStatus = swapPlayers(player, benchPlayer)
+                else:
+                    logging.info("Not starting %s because he has lower points" % player['name'])
+            
+            if swapStatus == True:
+                position = player['current_position']
+                player['current_position'] = benchPlayer['current_position']
+                benchPlayer['current_position'] = position
 
     for line in roster:
         logging.debug(line)
@@ -320,17 +336,18 @@ def findNextEligiblePlayer(positions, roster):
     """
 
     today = str(datetime.date.today())
-
     selectedPlayer = None
     for player in roster:
-        if selectedPlayer is None:
+        if selectedPlayer is None and player['current_position'] in positions:
             selectedPlayer = player
+            logging.debug("Thinking of starting %s" % selectedPlayer)
             pass
 
-        if player['current_position'] in positions and player['points'] < selectedPlayer['points']:
-            selectedPlayer = player
+        if player['current_position'] in positions and float(player['points']) < float(selectedPlayer['points']) and player['current_position'] != "BN":
+            logging.debug("Thinking of starting %s" % player)
+            selectedPlayer = player        
     
-    logging.debug("Found %s to be the next eligible player" % selectedPlayer['name'])
+    logging.info("Found %s to be the next eligible player" % selectedPlayer['name'])
     return selectedPlayer
 
 def swapPlayers(currentPlayer, benchPlayer):
@@ -379,10 +396,12 @@ def swapPlayers(currentPlayer, benchPlayer):
         logging.error("HTTP Code: %s" % response.status_code)
         logging.error("HTTP Response: \n%s" % response.content)
         logging.error("-------END DEBUG------")
-        sys.exit(1)
+        return False
 
+    return True
 
 logging.basicConfig(filename='/var/log/yahoo-sports-bot/autostart.log', level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 main()
