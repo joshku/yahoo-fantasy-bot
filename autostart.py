@@ -97,6 +97,8 @@ def main():
         playerData['key'] = player['player_key']
         team.append(playerData)
     
+    for line in team:
+        logging.info(line)
     setLineup(team)
 
 def getLeagueSettings():
@@ -112,7 +114,7 @@ def getRoster():
         Get the roster from Yahoo and parses the response
     """
 
-    rosterUrl = BASE_YAHOO_API_URL + "team/" + credentials.gameKey + ".l." + credentials.leagueId + ".t." + credentials.teamId + "/roster" + ";date=2017-10-13"
+    rosterUrl = BASE_YAHOO_API_URL + "team/" + credentials.gameKey + ".l." + credentials.leagueId + ".t." + credentials.teamId + "/roster"
     return queryYahooApi(rosterUrl, "roster")
 
 def getPlayerData(playerKey):
@@ -312,7 +314,7 @@ def setLineup(roster):
                 benchPlayer['current_position'] = position
 
     for line in roster:
-        logging.debug(line)
+        logging.info(line)
 
 
 def findNonPlayingPlayer(positions, roster):
