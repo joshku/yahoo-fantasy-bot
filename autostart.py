@@ -96,9 +96,7 @@ def main():
         playerData['current_position'] = player['selected_position']['position']
         playerData['key'] = player['player_key']
         team.append(playerData)
-    
-    for line in team:
-        logging.info(line)
+
     setLineup(team)
 
 def getLeagueSettings():
@@ -314,7 +312,7 @@ def setLineup(roster):
                 benchPlayer['current_position'] = position
 
     for line in roster:
-        logging.info(line)
+        logging.debug(line)
 
 
 def findNonPlayingPlayer(positions, roster):
