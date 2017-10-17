@@ -81,9 +81,14 @@ def insertNews(existingNews, newNews):
 
     if len(existingNews) != 0:
         for article in newNews:
+                alreadyExist = False
                 for blurb in existingNews:
-                    if article['date'] != blurb['date'] and article['name'] != blurb['name']:
-                        existingNews.append(article)
+                    if article['date'] == blurb['date'] and article['name'] == blurb['name']:
+                        alreadyExist = True
+                        break
+                
+                if alreadyExist == False:
+                    existingNews.append(article)
     else:
         existingNews = newNews
 
