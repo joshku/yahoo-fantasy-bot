@@ -405,3 +405,4 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 main()
+logging.info("Done!")
