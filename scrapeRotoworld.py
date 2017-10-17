@@ -13,7 +13,7 @@ ROTOWORLD_PATH = DIRECTORY_PATH + '/rotoworld.txt'
 def main():
     """
         Scrapes rotoworld.com and gets all goalie related news
-    """"
+    """
 
     response = requests.get(ROTOWORLD_URL)
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -92,5 +92,6 @@ def insertNews(existingNews, newNews):
 
     for entry in existingNews:
         json.dump(entry, rotoworldFile)
+        rotoworldFile.write('\n')
     
 main()
