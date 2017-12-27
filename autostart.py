@@ -120,7 +120,7 @@ def getPlayerData(playerKey):
         Get player data from Yahoo and parses the response
     """
 
-    rosterUrl = BASE_YAHOO_API_URL + "league/" + credentials.gameKey + ".l." + credentials.leagueId + "/players;player_keys=" + playerKey + "/stats"
+    rosterUrl = BASE_YAHOO_API_URL + "league/" + credentials.gameKey + ".l." + credentials.leagueId + "/players;player_keys=" + playerKey + "/stats;type=biweekly"
     playerData = queryYahooApi(rosterUrl, "player")
     player = {}
     player['name'] = playerData['fantasy_content']['league']['players']['player']['name']['full']
@@ -142,6 +142,7 @@ def queryYahooApi(url, dataType):
 
     oauth = readOAuthToken()
     header = "Bearer " + oauth['token']
+    logging.debug("URL: %s" % url)
     response = requests.get(url, headers={'Authorization' : header})
     
     if response.status_code == 200:
@@ -280,7 +281,7 @@ def refreshAccessToken(refreshToken):
 def setLineup(roster):
     """
         Sets the lineup given a dictionary of players.
-        If there is a tie, tie-breaker is by total season points
+        If there is a tie, tie-breaker is total biweekly points
     """
 
     switchedPlayers = True
@@ -332,7 +333,7 @@ def findNonPlayingPlayer(positions, roster):
 
 def findNextEligiblePlayer(positions, roster):
     """
-        Looks for the next eligible player with the lowest points this season and returns it
+        Looks for the next eligible player with the lowest points biweekly and returns it
     """
 
     today = str(datetime.date.today())
