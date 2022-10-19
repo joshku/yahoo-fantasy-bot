@@ -14,6 +14,13 @@ on:
 permissions:
   contents: read
 
+env:
+  CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
+  CONSUMER_SECRET: ${{ secrets.CONSUMER_SECRET }}
+  GAME_KEY: ${{ secrets.GAME_KEY }}
+  LEAGUE_ID: ${{ secrets.LEAGUE_ID }}
+  TEAM_ID: ${{ secrets.TEAM_ID }}
+
 jobs:
   build:
 
@@ -26,12 +33,7 @@ jobs:
       with:
         python-version: "3.10"
     - name: Install dependencies
-      env:
-        CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
-        CONSUMER_SECRET: ${{ secrets.CONSUMER_SECRET }}
-        GAME_KEY: ${{ secrets.GAME_KEY }}
-        LEAGUE_ID: ${{ secrets.LEAGUE_ID }}
-        TEAM_ID: ${{ secrets.TEAM_ID }}
+
       run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest
