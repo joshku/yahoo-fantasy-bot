@@ -204,7 +204,7 @@ def readOAuthToken():
     """
     oauth = None
     if 'YAHOO_TOKEN' in os.environ:
-        oauth = json.load(os.environ['YAHOO_TOKEN'])
+        oauth = json.loads(os.environ['YAHOO_TOKEN'])
     else:
         logging.debug("Reading token details from file...")
 
