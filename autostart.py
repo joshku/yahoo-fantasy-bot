@@ -10,10 +10,6 @@ import datetime                         #Import datetime to get the current date
 import logging                          #Import logging to send output to a log file
 from collections import OrderedDict     #Import OrderedDict to set the key order in a dictionary
 
-
-# Custom packages
-import credentials         #Import credentials file to be used for calls to Yahoo services
-
 #Global Variables
 REQUEST_TOKEN_URL = "https://api.login.yahoo.com/oauth/v2/get_request_token"
 REQUEST_AUTH_URL = "https://api.login.yahoo.com/oauth2/request_auth"
@@ -22,6 +18,12 @@ BASE_YAHOO_API_URL = "https://fantasysports.yahooapis.com/fantasy/v2/"
 NEXT_GAME_URL = "https://statsapi.web.nhl.com/api/v1/teams/%s?expand=team.schedule.next"
 DIRECTORY_PATH = os.path.dirname(os.path.realpath(__file__))
 TOKEN_PATH = DIRECTORY_PATH + '/tokenData.conf'
+
+consumerKey = os.environ['CONSUMER_KEY']
+consumerSecret = os.environ['CONSUMER_SECRET']
+gameKey = os.environ['GAME_KEY']
+leagueId = os.environ['LEAGUE_ID']
+teamId = os.environ['TEAM_ID']
 
 
 NHL_TEAM_ID =  {
@@ -55,7 +57,8 @@ NHL_TEAM_ID =  {
                     'Minnesota Wild' : '30',
                     'Winnipeg Jets' : '52',
                     'Arizona Coyotes' : '53',
-                    'Vegas Golden Knights' : '54'
+                    'Vegas Golden Knights' : '54',
+                    'Seattle Kraken': '55'
                 }
 
 def main():
@@ -67,20 +70,30 @@ def main():
     logging.info("Starting Auto-Start Bot...")
     hasToken = False
 
-    # Check to see if the token data file is present
+    if 'YAHOO_TOKEN' in os.environ:
+        try:
+            oauth = json.loads(os.environ['YAHOO_TOKEN'])
+            tokenFile = open(TOKEN_PATH, 'w')
+            json.dump(oauth, tokenFile)
+            tokenFile.close()
 
+        except Exception as e:
+            raise e
+        hasToken = True
+
+        # Check to see if the token data file is present
     try:
         logging.debug("Token Path: %s" % TOKEN_PATH)
         open(TOKEN_PATH, 'r')
         hasToken = True
-    except IOError, e:
+    except IOError as e:
 
         if "No such file or directory" in e.strerror:
             hasToken = False
         else:
             logging.error("IO ERROR: [%d] %s" %(e.errno, e.strerror))
             sys.exit(1)
-    except Exception, e:
+    except Exception as e:
         logging.error("ERROR: [%d] %s" %(e.errno, e.strerror))
         sys.exit(1)
 
@@ -104,7 +117,7 @@ def getLeagueSettings():
         Get the league settings from Yahoo and parses the response
     """
 
-    rosterUrl = BASE_YAHOO_API_URL + "league/" + credentials.gameKey + ".l." + credentials.leagueId + "/settings"
+    rosterUrl = BASE_YAHOO_API_URL + "league/" + gameKey + ".l." + leagueId + "/settings"
     return queryYahooApi(rosterUrl, "league")
 
 def getRoster():
@@ -112,7 +125,7 @@ def getRoster():
         Get the roster from Yahoo and parses the response
     """
 
-    rosterUrl = BASE_YAHOO_API_URL + "team/" + credentials.gameKey + ".l." + credentials.leagueId + ".t." + credentials.teamId + "/roster"
+    rosterUrl = BASE_YAHOO_API_URL + "team/" + gameKey + ".l." + leagueId + ".t." + teamId + "/roster"
     return queryYahooApi(rosterUrl, "roster")
 
 def getPlayerData(playerKey):
@@ -120,13 +133,18 @@ def getPlayerData(playerKey):
         Get player data from Yahoo and parses the response
     """
 
-    rosterUrl = BASE_YAHOO_API_URL + "league/" + credentials.gameKey + ".l." + credentials.leagueId + "/players;player_keys=" + playerKey + "/stats;type=biweekly"
+    rosterUrl = BASE_YAHOO_API_URL + "league/" + gameKey + ".l." + leagueId + "/players;player_keys=" + playerKey + "/stats;type=biweekly"
     playerData = queryYahooApi(rosterUrl, "player")
     player = {}
     player['name'] = playerData['fantasy_content']['league']['players']['player']['name']['full']
     player['team'] = playerData['fantasy_content']['league']['players']['player']['editorial_team_full_name']
     player['available_positions'] = playerData['fantasy_content']['league']['players']['player']['eligible_positions']['position']
-    player['points'] = playerData['fantasy_content']['league']['players']['player']['player_points']['total']
+
+    points = 0
+    for stat in playerData['fantasy_content']['league']['players']['player']['player_stats']['stats']['stat']:
+        points += int(stat['value']) if isinstance(stat['value'], int) else 0
+
+    player['points'] = points
 
     url = NEXT_GAME_URL % NHL_TEAM_ID[player['team']]
     response = requests.get(url)
@@ -151,7 +169,7 @@ def queryYahooApi(url, dataType):
         payload = xmltodict.parse(response.content)
         logging.debug("Successfully parsed %s data" % dataType)
         return payload
-    elif response.status_code == 401 and "token_expired" in response.content:
+    elif response.status_code == 401 and b"token_expired" in response.content:
         logging.info("Token Expired....renewing")
         oauth = refreshAccessToken(oauth['refreshToken'])
         return queryYahooApi(url, dataType)
@@ -171,17 +189,17 @@ def getFullAuthorization():
     """
 
     # Step 1: Get authorization from User to access their data
-    authUrl = "%s?client_id=%s&redirect_uri=oob&response_type=code" % (REQUEST_AUTH_URL, credentials.consumerKey)
+    authUrl = "%s?client_id=%s&redirect_uri=oob&response_type=code" % (REQUEST_AUTH_URL, consumerKey)
     logging.debug(authUrl)
     print ("You need to authorize this application to access your data.\nPlease go to %s" % (authUrl))
     authorized = 'n'
 
     while authorized.lower() != 'y':
-        authorized = raw_input('Have you authorized me? (y/n)')
+        authorized = input('Have you authorized me? (y/n)')
         if authorized.lower() != 'y':
             print ("You need to authorize me to continue...")
 
-    authCode = raw_input("What is the code? ")
+    authCode = input("What is the code? ")
 
     # Step 2: Get Access Token to send requests to Yahoo APIs
     response = getAccessToken(authCode)
@@ -199,7 +217,7 @@ def readOAuthToken():
         tokenFile = open(TOKEN_PATH, 'r')
         oauth = json.load(tokenFile)
         tokenFile.close()
-    except Exception, e:
+    except Exception as e:
         raise e
 
     logging.debug("Reading complete!")
@@ -228,7 +246,7 @@ def parseResponse (response):
 
         return oauth
 
-    except Exception, e:
+    except Exception as e:
         raise e
 
 def getAccessToken(verifier):
@@ -240,7 +258,7 @@ def getAccessToken(verifier):
 
     logging.info("Getting access token...")
 
-    response = requests.post(REQUEST_TOKEN_URL, data = {'client_id' : credentials.consumerKey, 'client_secret' : credentials.consumerSecret, 'redirect_uri' : 'oob', 'code' : verifier, 'grant_type' : 'authorization_code'})
+    response = requests.post(REQUEST_TOKEN_URL, data = {'client_id' : consumerKey, 'client_secret' : consumerSecret, 'redirect_uri' : 'oob', 'code' : verifier, 'grant_type' : 'authorization_code'})
 
     if response.status_code == 200:
         logging.info("Success!")
@@ -263,7 +281,7 @@ def refreshAccessToken(refreshToken):
 
     logging.info("Refreshing access token...")
 
-    response = requests.post(REQUEST_TOKEN_URL, data = {'client_id' : credentials.consumerKey, 'client_secret' : credentials.consumerSecret, 'redirect_uri' : 'oob', 'refresh_token' : refreshToken, 'grant_type' : 'refresh_token'})
+    response = requests.post(REQUEST_TOKEN_URL, data = {'client_id' : consumerKey, 'client_secret' : consumerSecret, 'redirect_uri' : 'oob', 'refresh_token' : refreshToken, 'grant_type' : 'refresh_token'})
 
     if response.status_code == 200:
         logging.info("Success!")
@@ -379,7 +397,7 @@ def swapPlayers(currentPlayer, benchPlayer):
     payload = xmltodict.unparse(dictPayload, pretty=True)
     logging.debug(payload)
 
-    rosterUrl = BASE_YAHOO_API_URL + "team/" + credentials.gameKey + ".l." + credentials.leagueId + ".t." + credentials.teamId + "/roster"
+    rosterUrl = BASE_YAHOO_API_URL + "team/" + gameKey + ".l." + leagueId + ".t." + teamId + "/roster"
     oauth = readOAuthToken()
     header = "Bearer " + oauth['token']
     response = requests.put(rosterUrl, headers={'Authorization' : header, 'Content-Type': 'application/xml'}, data=payload)
@@ -401,7 +419,7 @@ def swapPlayers(currentPlayer, benchPlayer):
 
     return True
 
-logging.basicConfig(filename='/var/log/yahoo-sports-bot/autostart.log', level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s: %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 

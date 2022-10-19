@@ -1,2 +1,4 @@
 *credentials.py*
 *tokenData.conf*
+__pycache__/
+venv/
