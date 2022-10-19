@@ -70,22 +70,24 @@ def main():
     logging.info("Starting Auto-Start Bot...")
     hasToken = False
 
-    # Check to see if the token data file is present
-
-    try:
-        logging.debug("Token Path: %s" % TOKEN_PATH)
-        open(TOKEN_PATH, 'r')
+    if 'YAHOO_TOKEN' in os.environ:
         hasToken = True
-    except IOError as e:
+    else:
+        # Check to see if the token data file is present
+        try:
+            logging.debug("Token Path: %s" % TOKEN_PATH)
+            open(TOKEN_PATH, 'r')
+            hasToken = True
+        except IOError as e:
 
-        if "No such file or directory" in e.strerror:
-            hasToken = False
-        else:
-            logging.error("IO ERROR: [%d] %s" %(e.errno, e.strerror))
+            if "No such file or directory" in e.strerror:
+                hasToken = False
+            else:
+                logging.error("IO ERROR: [%d] %s" %(e.errno, e.strerror))
+                sys.exit(1)
+        except Exception as e:
+            logging.error("ERROR: [%d] %s" %(e.errno, e.strerror))
             sys.exit(1)
-    except Exception as e:
-        logging.error("ERROR: [%d] %s" %(e.errno, e.strerror))
-        sys.exit(1)
 
     if hasToken == False:
         logging.info("Token file not present. Beginning authorization process...")
