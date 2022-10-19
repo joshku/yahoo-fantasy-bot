@@ -71,23 +71,31 @@ def main():
     hasToken = False
 
     if 'YAHOO_TOKEN' in os.environ:
-        hasToken = True
-    else:
-        # Check to see if the token data file is present
         try:
-            logging.debug("Token Path: %s" % TOKEN_PATH)
-            open(TOKEN_PATH, 'r')
-            hasToken = True
-        except IOError as e:
+            oauth = json.loads(os.environ['YAHOO_TOKEN'])
+            tokenFile = open(TOKEN_PATH, 'w')
+            json.dump(oauth, tokenFile)
+            tokenFile.close()
 
-            if "No such file or directory" in e.strerror:
-                hasToken = False
-            else:
-                logging.error("IO ERROR: [%d] %s" %(e.errno, e.strerror))
-                sys.exit(1)
         except Exception as e:
-            logging.error("ERROR: [%d] %s" %(e.errno, e.strerror))
+            raise e
+        hasToken = True
+
+        # Check to see if the token data file is present
+    try:
+        logging.debug("Token Path: %s" % TOKEN_PATH)
+        open(TOKEN_PATH, 'r')
+        hasToken = True
+    except IOError as e:
+
+        if "No such file or directory" in e.strerror:
+            hasToken = False
+        else:
+            logging.error("IO ERROR: [%d] %s" %(e.errno, e.strerror))
             sys.exit(1)
+    except Exception as e:
+        logging.error("ERROR: [%d] %s" %(e.errno, e.strerror))
+        sys.exit(1)
 
     if hasToken == False:
         logging.info("Token file not present. Beginning authorization process...")
@@ -202,20 +210,17 @@ def readOAuthToken():
     """
         Reads the token data from file and returns a dictionary object
     """
-    oauth = None
-    if 'YAHOO_TOKEN' in os.environ:
-        oauth = json.loads(os.environ['YAHOO_TOKEN'])
-    else:
-        logging.debug("Reading token details from file...")
 
-        try:
-            tokenFile = open(TOKEN_PATH, 'r')
-            oauth = json.load(tokenFile)
-            tokenFile.close()
-        except Exception as e:
-            raise e
+    logging.debug("Reading token details from file...")
 
-        logging.debug("Reading complete!")
+    try:
+        tokenFile = open(TOKEN_PATH, 'r')
+        oauth = json.load(tokenFile)
+        tokenFile.close()
+    except Exception as e:
+        raise e
+
+    logging.debug("Reading complete!")
     return oauth
 
 def parseResponse (response):
