@@ -20,6 +20,7 @@ env:
   GAME_KEY: ${{ secrets.GAME_KEY }}
   LEAGUE_ID: ${{ secrets.LEAGUE_ID }}
   TEAM_ID: ${{ secrets.TEAM_ID }}
+  YAHOO_TOKEN: ${{ secrets.YAHOO_TOKEN }}
 
 jobs:
   build:
