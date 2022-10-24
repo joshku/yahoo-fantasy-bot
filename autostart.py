@@ -8,6 +8,7 @@ import requests                         #Import requests for HTTP(S) protocols
 import xmltodict                        #Import xmltodict to parse XML responses to JSON
 import datetime                         #Import datetime to get the current date
 import logging                          #Import logging to send output to a log file
+import time                             #Import time to get epoch time
 from collections import OrderedDict     #Import OrderedDict to set the key order in a dictionary
 
 #Global Variables
@@ -109,6 +110,7 @@ def main():
         playerData['current_position'] = player['selected_position']['position']
         playerData['key'] = player['player_key']
         team.append(playerData)
+        logging.info("Fetched %s data" % playerData['name'])
 
     setLineup(team)
 
@@ -139,10 +141,19 @@ def getPlayerData(playerKey):
     player['name'] = playerData['fantasy_content']['league']['players']['player']['name']['full']
     player['team'] = playerData['fantasy_content']['league']['players']['player']['editorial_team_full_name']
     player['available_positions'] = playerData['fantasy_content']['league']['players']['player']['eligible_positions']['position']
+    if 'player_notes_last_timestamp' in playerData['fantasy_content']['league']['players']['player']:
+        player['new_notes_timestamp'] = int(playerData['fantasy_content']['league']['players']['player']['player_notes_last_timestamp'])
+    else:
+        player['new_notes_timestamp'] = '-1'
 
     points = 0
     for stat in playerData['fantasy_content']['league']['players']['player']['player_stats']['stats']['stat']:
-        points += int(stat['value']) if isinstance(stat['value'], int) else 0
+        if stat['value'] == '-':
+            points += 0
+        elif stat['stat_id'] == '22':       # Goals Against counts against overall score
+            points -= int(stat['value'])
+        else:
+            points += int(stat['value'])
 
     player['points'] = points
 
@@ -306,7 +317,8 @@ def setLineup(roster):
     swapStatus = False
     today = str(datetime.date.today())
     for benchPlayer in roster:
-        if benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today:
+        last_note_timestamp_diff = (int(time.time()) - int(benchPlayer['new_notes_timestamp'])) / 3600
+        if (benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today and benchPlayer['available_positions'] != 'G') or (benchPlayer['available_positions'] == 'G' and benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today and last_note_timestamp_diff < 6):
             logging.info("Looking at bench player %s" % benchPlayer['name'])
             positions = set(benchPlayer['available_positions'])
             logging.debug(positions) 
@@ -342,6 +354,9 @@ def findNonPlayingPlayer(positions, roster):
     logging.debug("Today's date: %s" % str(datetime.date.today()))
     today = str(datetime.date.today())
     for player in roster:
+        timestamp_diff = (int(time.time()) - int(player['new_notes_timestamp'])) / 3600
+        if player['current_position'] == 'G' and player['next_game'] == today and timestamp_diff > 6:
+            return player
         if player['current_position'] in positions and player['next_game'] > today:
             logging.debug("Found player %s who plays on %s" % (player['name'], player['next_game']))
             return player
