@@ -354,7 +354,7 @@ def findNonPlayingPlayer(positions, roster):
     logging.debug("Today's date: %s" % str(datetime.date.today()))
     today = str(datetime.date.today())
     for player in roster:
-        timestamp_diff = (int(time.time()) - player['new_notes_timestamp']) / 3600
+        timestamp_diff = (int(time.time()) - int(player['new_notes_timestamp'])) / 3600
         if player['current_position'] == 'G' and player['next_game'] == today and timestamp_diff > 6:
             return player
         if player['current_position'] in positions and player['next_game'] > today:
