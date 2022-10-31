@@ -311,14 +311,15 @@ def setLineup(roster):
     """
         Sets the lineup given a dictionary of players.
         If there is a tie, tie-breaker is total biweekly points
+        To start a goalie, checks to see if there is a new note since 3 AM PT of the current day
+        Typically there is a note for the goalie stating they will start on the day they are playing
     """
 
-    switchedPlayers = True
     swapStatus = False
     today = str(datetime.date.today())
     for benchPlayer in roster:
-        last_note_timestamp_diff = (int(time.time()) - int(benchPlayer['new_notes_timestamp'])) / 3600
-        if (benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today and benchPlayer['available_positions'] != 'G') or (benchPlayer['available_positions'] == 'G' and benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today and last_note_timestamp_diff < 6):
+        is_last_note_timestamp_today = int(benchPlayer['new_notes_timestamp']) > int(datetime.date.today().strftime('%s')) + 10800
+        if (benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today and benchPlayer['available_positions'] != 'G') or (benchPlayer['available_positions'] == 'G' and benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today and is_last_note_timestamp_today):
             logging.info("Looking at bench player %s" % benchPlayer['name'])
             positions = set(benchPlayer['available_positions'])
             logging.debug(positions) 
