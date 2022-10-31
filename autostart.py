@@ -110,7 +110,7 @@ def main():
         playerData['current_position'] = player['selected_position']['position']
         playerData['key'] = player['player_key']
         team.append(playerData)
-        logging.info("Fetched %s data" % playerData['name'])
+        logging.info("Fetched %s (%i pts) data" % (playerData['name'], playerData['points']))
 
     setLineup(team)
 
