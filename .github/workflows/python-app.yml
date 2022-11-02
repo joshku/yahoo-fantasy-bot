@@ -9,7 +9,7 @@ on:
   pull_request:
     branches: [ "master" ]
   schedule:
-    - cron: '0 0-3,17-23 * * *'
+    - cron: '20,50 0-2,15-23 * * *'
 
 permissions:
   contents: read
