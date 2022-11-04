@@ -9,7 +9,7 @@ on:
   pull_request:
     branches: [ "master" ]
   schedule:
-    - cron: '20,50 0-2,15-23 * * *'
+    - cron: '*/10 0-3,15-23 * * *'
 
 permissions:
   contents: read
@@ -29,6 +29,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Set Timezone
+      # You may pin to the exact commit or the version.
+      # uses: szenius/set-timezone@dd47655c84241eec2ffa0a855959c16c0920c3c4
+      uses: szenius/set-timezone@v1.0
+      with:
+        # Desired timezone for Linux
+        timezoneLinux: "America/Vancouver"
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
