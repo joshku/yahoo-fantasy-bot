@@ -16,7 +16,7 @@ REQUEST_TOKEN_URL = "https://api.login.yahoo.com/oauth/v2/get_request_token"
 REQUEST_AUTH_URL = "https://api.login.yahoo.com/oauth2/request_auth"
 REQUEST_TOKEN_URL = "https://api.login.yahoo.com/oauth2/get_token"
 BASE_YAHOO_API_URL = "https://fantasysports.yahooapis.com/fantasy/v2/"
-NEXT_GAME_URL = "https://statsapi.web.nhl.com/api/v1/teams/%s?expand=team.schedule.next"
+NEXT_GAME_URL = "https://api-web.nhle.com/v1/club-schedule/%s/week/now"
 DIRECTORY_PATH = os.path.dirname(os.path.realpath(__file__))
 TOKEN_PATH = DIRECTORY_PATH + '/tokenData.conf'
 
@@ -28,38 +28,38 @@ teamId = os.environ['TEAM_ID']
 
 
 NHL_TEAM_ID =  {
-                    'New Jersey Devils' : '1',
-                    'New York Islanders' : '2',
-                    'New York Rangers' : '3',
-                    'Philadelphia Flyers' : '4',
-                    'Pittsburgh Penguins' : '5',
-                    'Boston Bruins' : '6',
-                    'Buffalo Sabres' : '7',
-                    'Montreal Canadiens' : '8',
-                    'Ottawa Senators' : '9',
-                    'Toronto Maple Leafs' : '10',
-                    'Carolina Hurricanes' : '12',
-                    'Florida Panthers' : '13',
-                    'Tampa Bay Lightning' : '14',
-                    'Washington Capitals' : '15',
-                    'Chicago Blackhawks' : '16',
-                    'Detroit Red Wings' : '17',
-                    'Nashville Predators' : '18',
-                    'St. Louis Blues' : '19',
-                    'Calgary Flames' : '20',
-                    'Colorado Avalanche' : '21',
-                    'Edmonton Oilers' : '22',
-                    'Vancouver Canucks' : '23',
-                    'Anaheim Ducks' : '24',
-                    'Dallas Stars' : '25',
-                    'Los Angeles Kings' : '26',
-                    'San Jose Sharks' : '28',
-                    'Columbus Blue Jackets' : '29',
-                    'Minnesota Wild' : '30',
-                    'Winnipeg Jets' : '52',
-                    'Arizona Coyotes' : '53',
-                    'Vegas Golden Knights' : '54',
-                    'Seattle Kraken': '55'
+                    'New Jersey Devils' : 'NJD',
+                    'New York Islanders' : 'NYI',
+                    'New York Rangers' : 'NYR',
+                    'Philadelphia Flyers' : 'PHI',
+                    'Pittsburgh Penguins' : 'PIT',
+                    'Boston Bruins' : 'BOS',
+                    'Buffalo Sabres' : 'BUF',
+                    'Montreal Canadiens' : 'MTL',
+                    'Ottawa Senators' : 'OTT',
+                    'Toronto Maple Leafs' : 'TOR',
+                    'Carolina Hurricanes' : 'CAR',
+                    'Florida Panthers' : 'FLA',
+                    'Tampa Bay Lightning' : 'TBL',
+                    'Washington Capitals' : 'WSH',
+                    'Chicago Blackhawks' : 'CHI',
+                    'Detroit Red Wings' : 'DET',
+                    'Nashville Predators' : 'NSH',
+                    'St. Louis Blues' : 'STL',
+                    'Calgary Flames' : 'CGY',
+                    'Colorado Avalanche' : 'COL',
+                    'Edmonton Oilers' : 'EDM',
+                    'Vancouver Canucks' : 'VAN',
+                    'Anaheim Ducks' : 'ANA',
+                    'Dallas Stars' : 'DAL',
+                    'Los Angeles Kings' : 'LAK',
+                    'San Jose Sharks' : 'SJS',
+                    'Columbus Blue Jackets' : 'CBJ',
+                    'Minnesota Wild' : 'MIN',
+                    'Winnipeg Jets' : 'WPG',
+                    'Utah Mammoth' : 'UTA',
+                    'Vegas Golden Knights' : 'VGK',
+                    'Seattle Kraken': 'SEA'
                 }
 
 def main():
@@ -160,7 +160,7 @@ def getPlayerData(playerKey):
     url = NEXT_GAME_URL % NHL_TEAM_ID[player['team']]
     response = requests.get(url)
     nextGame = json.loads(response.content)
-    player['next_game'] = nextGame['teams'][0]['nextGameSchedule']['dates'][0]['date']
+    player['next_game'] = nextGame['games'][0]['gameDate']
     
     return player
 
