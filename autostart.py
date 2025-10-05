@@ -319,7 +319,7 @@ def setLineup(roster):
     today = str(datetime.date.today())
     for benchPlayer in roster:
         is_last_note_timestamp_today = int(benchPlayer['new_notes_timestamp']) > int(datetime.date.today().strftime('%s')) + 10800
-        if (benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today and benchPlayer['available_positions'] != 'G') or (benchPlayer['available_positions'] == 'G' and benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today and is_last_note_timestamp_today):
+        if (benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today and benchPlayer['available_positions'] != 'G' and 'IR' not in benchPlayer['available_positions'] and 'IR+' not in benchPlayer['available_positions']) or (benchPlayer['available_positions'] == 'G' and benchPlayer['current_position'] == "BN" and benchPlayer['next_game'] == today and is_last_note_timestamp_today):
             logging.info("Looking at bench player %s" % benchPlayer['name'])
             positions = set(benchPlayer['available_positions'])
             logging.debug(positions) 
@@ -360,6 +360,11 @@ def findNonPlayingPlayer(positions, roster):
             return player
         if player['current_position'] in positions and player['next_game'] > today:
             logging.debug("Found player %s who plays on %s" % (player['name'], player['next_game']))
+            return player
+
+        # Bench an injured player
+        if player['current_position'] in positions and 'IR' in player['available_positions'] or 'IR+' in player['available_positions']:
+            logging.debug("Found injured player %s" % player['name'])
             return player
     
     logging.info("All players playing today")
