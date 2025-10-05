@@ -1,4 +1,5 @@
-*credentials.py*
+credentials.py
+credentials
 *tokenData.conf*
 __pycache__/
 venv/
