@@ -148,7 +148,7 @@ def getPlayerData(playerKey):
 
     points = 0
     for stat in playerData['fantasy_content']['league']['players']['player']['player_stats']['stats']['stat']:
-        print(int(str(stat))+1)
+        print(int(stat['stat_id'])+1)
         print(stat['value'])
         if stat['value'] == '-':
             points += 0
