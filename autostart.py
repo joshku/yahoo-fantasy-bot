@@ -147,6 +147,7 @@ def getPlayerData(playerKey):
         player['new_notes_timestamp'] = '-1'
 
     points = 0
+    print(playerData['fantasy_content']['league']['players']['player']['player_stats']['stats']['stat'])
     for stat in playerData['fantasy_content']['league']['players']['player']['player_stats']['stats']['stat']:
         if stat['value'] == '-':
             points += 0
