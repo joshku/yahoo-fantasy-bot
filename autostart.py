@@ -152,6 +152,8 @@ def getPlayerData(playerKey):
             points += 0
         elif stat['stat_id'] == '22':       # Goals Against counts against overall score
             points -= int(stat['value'])
+        elif stat['stat_id'] == '26':       #Convert save percentage to be a float
+            points += float(stat['value'])
         else:
             points += int(stat['value'])
 
